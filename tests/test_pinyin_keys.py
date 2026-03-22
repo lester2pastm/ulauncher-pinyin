@@ -6,6 +6,64 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 from pinyin_data import build_search_keys, to_pinyin, to_initials
 
 
+TOP_LINUX_APP_CHINESE_NAMES = [
+    "火狐浏览器",
+    "谷歌浏览器",
+    "浏览器",
+    "自由办公",
+    "办公套件",
+    "雷鸟邮件",
+    "邮件客户端",
+    "钉钉",
+    "微信",
+    "媒体播放器",
+    "音频编辑器",
+    "音乐播放器",
+    "网易云音乐",
+    "图像处理软件",
+    "矢量图形编辑器",
+    "绘画软件",
+    "三维图形软件",
+    "照片处理器",
+    "代码编辑器",
+    "文本编辑器",
+    "文件管理器",
+    "终端",
+    "下拉式终端",
+    "云存储",
+    "云盘",
+    "下载管理器",
+    "虚拟机",
+    "分区编辑器",
+    "优化工具",
+    "系统清理",
+    "防火墙",
+    "截图工具",
+    "录屏工具",
+    "视频编辑器",
+    "包管理器",
+    "软件中心",
+    "设置中心",
+    "系统监视器",
+    "磁盘管理器",
+    "归档管理器",
+    "计算器",
+    "日历",
+    "便笺",
+    "扫描器",
+    "摄像头",
+    "远程桌面",
+    "备份工具",
+    "密码管理器",
+    "输入法",
+    "应用商店",
+]
+
+
+def _contains_chinese(text: str) -> bool:
+    return any("\u4e00" <= ch <= "\u9fff" for ch in text)
+
+
 def test_system_settings_keys():
     """系统 -> xitong, xt"""
     keys = build_search_keys("系统")
@@ -71,6 +129,38 @@ def test_common_apps():
     keys = build_search_keys("文件管理器")
     assert "wenjianguanliqi" in keys["full_pinyin"]
     assert "wjglq" in keys["initials"]
+
+
+def test_lanxin_simplified_name():
+    keys = build_search_keys("蓝信")
+    assert keys["full_pinyin"] == "lanxin"
+    assert keys["initials"] == "lx"
+
+
+def test_music_uses_yue_pronunciation():
+    keys = build_search_keys("音乐")
+    assert keys["full_pinyin"] == "yinyue"
+    assert keys["initials"] == "yy"
+
+
+def test_netease_cloud_music_uses_yue_pronunciation():
+    keys = build_search_keys("网易云音乐")
+    assert keys["full_pinyin"] == "wangyiyunyinyue"
+    assert keys["initials"] == "wyyyy"
+
+
+def test_letian_keeps_default_le_pronunciation_outside_music_phrase():
+    keys = build_search_keys("乐天")
+    assert keys["full_pinyin"] == "letian"
+    assert keys["initials"] == "lt"
+
+
+def test_top_linux_app_names_are_fully_mapped_to_pinyin():
+    for name in TOP_LINUX_APP_CHINESE_NAMES:
+        full = to_pinyin(name)
+        initials = to_initials(name)
+        assert not _contains_chinese(full), (name, full)
+        assert not _contains_chinese(initials), (name, initials)
 
 
 def test_empty_string():

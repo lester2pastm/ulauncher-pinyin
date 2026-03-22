@@ -3,7 +3,8 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
-from main import AppInfo, search_apps
+from main import AppInfo, app_to_result_item, search_apps
+from ulauncher.search.Query import Query
 
 
 def test_exact_original_match_ranks_first():
@@ -57,6 +58,24 @@ def test_initials_match():
     assert results[0].name == "系统"
 
 
+def test_full_pinyin_match_for_lanxin():
+    apps = [
+        AppInfo(name="蓝信", exec_command="lanxin"),
+    ]
+    results = search_apps("lanxin", apps)
+    assert len(results) >= 1
+    assert results[0].name == "蓝信"
+
+
+def test_initials_match_for_lanxin():
+    apps = [
+        AppInfo(name="蓝信", exec_command="lanxin"),
+    ]
+    results = search_apps("lx", apps)
+    assert len(results) >= 1
+    assert results[0].name == "蓝信"
+
+
 def test_no_match_returns_empty():
     """Query with no match should return empty list."""
     apps = [
@@ -71,3 +90,11 @@ def test_empty_query_returns_empty():
     apps = [AppInfo(name="系统", exec_command="ctrl")]
     results = search_apps("", apps)
     assert results == []
+
+
+def test_result_item_keeps_empty_description_when_comment_missing():
+    app = AppInfo(name="腾讯会议", exec_command="wemeetapp", comment="")
+
+    item = app_to_result_item(app)
+
+    assert item.get_description(Query("py tengxun")) == ""

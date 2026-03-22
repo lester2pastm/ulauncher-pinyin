@@ -2,7 +2,7 @@
   "required_api_version": "2",
   "name": "Ulauncher Pinyin",
   "description": "Search Chinese desktop apps by pinyin",
-  "developer_name": "Your Name",
+  "developer_name": "lester2pastm",
   "icon": "images/icon.png",
   "options": {
     "query_debounce": 0.1

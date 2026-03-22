@@ -5,9 +5,15 @@ from ulauncher.api.shared.item.ExtensionResultItem import ExtensionResultItem
 from ulauncher.api.shared.action.RenderResultListAction import RenderResultListAction
 from ulauncher.api.shared.action.HideWindowAction import HideWindowAction
 from ulauncher.api.shared.action.ExtensionCustomAction import ExtensionCustomAction
+from ulauncher.utils.desktopappinfo import DesktopAppInfo
 
 import subprocess
 import shlex
+import gi
+import importlib
+
+gi.require_version("Gtk", "3.0")
+Gtk = importlib.import_module("gi.repository.Gtk")
 
 
 class PinyinExtension(Extension):
@@ -15,6 +21,7 @@ class PinyinExtension(Extension):
         super(PinyinExtension, self).__init__()
         self.subscribe(KeywordQueryEvent, KeywordQueryEventListener())
         self.subscribe(ItemEnterEvent, ItemEnterEventListener())
+        load_index()
 
 
 class KeywordQueryEventListener(EventListener):
@@ -28,18 +35,7 @@ class KeywordQueryEventListener(EventListener):
         matches = search_apps(argument, all_apps)
 
         # Convert to extension result items
-        items = []
-        for app in matches[:8]:  # cap at 8 results for UX
-            items.append(
-                ExtensionResultItem(
-                    icon=app.icon if app.icon else "images/icon.png",
-                    name=app.name,
-                    description=app.exec_command,
-                    on_enter=ExtensionCustomAction(
-                        app_to_action_data(app), keep_app_open=False
-                    ),
-                )
-            )
+        items = [app_to_result_item(app) for app in matches[:8]]
 
         if not items:
             return RenderResultListAction([])
@@ -77,10 +73,31 @@ def load_index():
 DESKTOP_DIRS = [
     "/usr/share/applications",
     "/usr/local/share/applications",
+    "/var/lib/flatpak/exports/share/applications",
 ]
 user_dir = Path.home() / ".local" / "share" / "applications"
 if user_dir.exists():
     DESKTOP_DIRS.append(str(user_dir))
+
+flatpak_dir = Path("/var/lib/flatpak/app")
+if flatpak_dir.exists():
+    for item in flatpak_dir.iterdir():
+        app_dir = item / "current" / "active" / "export" / "share" / "applications"
+        if app_dir.exists():
+            DESKTOP_DIRS.append(str(app_dir))
+
+
+def resolve_icon(icon_name: str) -> str:
+    if not icon_name:
+        return "images/icon.png"
+    if icon_name.startswith("/"):
+        return icon_name
+    icon_info = Gtk.IconTheme.get_default().lookup_icon(
+        icon_name, ExtensionResultItem.get_icon_size(), Gtk.IconLookupFlags.FORCE_SIZE
+    )
+    if icon_info and icon_info.get_filename():
+        return icon_info.get_filename()
+    return "images/icon.png"
 
 
 @dataclass
@@ -138,11 +155,27 @@ def app_to_action_data(app: AppInfo) -> dict:
     }
 
 
+def app_to_result_item(app: AppInfo) -> ExtensionResultItem:
+    return ExtensionResultItem(
+        icon=resolve_icon(app.icon),
+        name=app.name,
+        description=app.comment,
+        on_enter=ExtensionCustomAction(app_to_action_data(app), keep_app_open=False),
+    )
+
+
 def load_apps_from_paths(paths):
     apps = []
+    seen_names = set()
     for path_str in paths:
         path = Path(path_str)
         if not path.exists():
+            continue
+        try:
+            desktop_app = DesktopAppInfo.new_from_filename(path_str)
+        except TypeError:
+            continue
+        if not desktop_app:
             continue
         cfg = configparser.ConfigParser(interpolation=None)
         try:
@@ -154,19 +187,25 @@ def load_apps_from_paths(paths):
         sec = cfg["Desktop Entry"]
         if sec.get("Type") != "Application":
             continue
-        if sec.getboolean("NoDisplay", False):
+        if sec.getboolean("NoDisplay", False) or desktop_app.get_nodisplay():
             continue
-        name = sec.get("Name", "")
-        exec_cmd = sec.get("Exec", "")
+        name = desktop_app.get_name() or sec.get("Name", "")
+        exec_cmd = desktop_app.get_string("Exec") or sec.get("Exec", "")
+        comment = desktop_app.get_description() or ""
+        if not comment and desktop_app.get_generic_name() != name:
+            comment = desktop_app.get_generic_name() or ""
         if not name or not exec_cmd:
             continue
+        if name in seen_names:
+            continue
+        seen_names.add(name)
         apps.append(
             AppInfo(
                 name=name,
                 exec_command=exec_cmd,
-                icon=sec.get("Icon", ""),
+                icon=desktop_app.get_string("Icon") or sec.get("Icon", ""),
                 keywords=sec.get("Keywords", ""),
-                comment=sec.get("Comment", ""),
+                comment=comment,
                 desktop_path=path_str,
             )
         )

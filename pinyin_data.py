@@ -60,6 +60,8 @@ PINYIN_MAP = {
     # System/Software related - high frequency in app names
     "系": "xi",
     "统": "tong",
+    "腾": "teng",
+    "讯": "xun",
     "应": "ying",
     "用": "yong",
     "开": "kai",
@@ -116,6 +118,30 @@ PINYIN_MAP = {
     "印": "yin",
     "机": "ji",
     "驱": "qu",
+    "三": "san",
+    "云": "yun",
+    "体": "ti",
+    "便": "bian",
+    "储": "chu",
+    "办": "ban",
+    "头": "tou",
+    "媒": "mei",
+    "形": "xing",
+    "扫": "sao",
+    "拉": "la",
+    "易": "yi",
+    "歌": "ge",
+    "照": "zhao",
+    "狐": "hu",
+    "画": "hua",
+    "矢": "shi",
+    "笺": "jian",
+    "绘": "hui",
+    "维": "wei",
+    "谷": "gu",
+    "钉": "ding",
+    "雷": "lei",
+    "鸟": "niao",
     "动": "dong",
     "固": "gu",
     "更": "geng",
@@ -209,6 +235,7 @@ PINYIN_MAP = {
     "片": "pian",
     "浏": "liu",
     "览": "lan",
+    "蓝": "lan",
     "箱": "xiang",
     "短": "duan",
     "信": "xin",
@@ -1856,6 +1883,16 @@ PINYIN_MAP = {
     "具": "ju",
 }
 
+PHRASE_PINYIN_MAP = {
+    "音乐": "yinyue",
+}
+
+PHRASE_INITIALS_MAP = {
+    "音乐": "yy",
+}
+
+_SORTED_PHRASES = sorted(PHRASE_PINYIN_MAP, key=len, reverse=True)
+
 # Build a set for fast lookup
 _ALL = dict(PINYIN_MAP)
 
@@ -1891,17 +1928,33 @@ def _get_pinyin(char: str) -> str:
     return char
 
 
+def _match_phrase(text: str, start: int) -> str | None:
+    for phrase in _SORTED_PHRASES:
+        if text.startswith(phrase, start):
+            return phrase
+    return None
+
+
 def to_pinyin(name: str) -> str:
     """
     Convert a Chinese string to pinyin (no tones, lowercase, no spaces).
     Unknown characters are kept as-is.
     """
     result = []
-    for ch in name:
+    i = 0
+    while i < len(name):
+        phrase = _match_phrase(name, i)
+        if phrase:
+            result.append(PHRASE_PINYIN_MAP[phrase])
+            i += len(phrase)
+            continue
+
+        ch = name[i]
         if _is_chinese(ch):
             result.append(_get_pinyin(ch))
         else:
             result.append(ch.lower() if ch.isalpha() else ch)
+        i += 1
     # Remove any spaces (some entries might have spaces between syllables)
     return "".join(result).lower().replace(" ", "")
 
@@ -1910,12 +1963,16 @@ def to_initials(name: str) -> str:
     """
     Get pinyin initials (first letter of each syllable) for a Chinese string.
     """
-    # First get the full pinyin
-    full_pinyin = to_pinyin(name)
-
-    # If we have Chinese characters, extract initials from each character's pinyin
     parts = []
-    for ch in name:
+    i = 0
+    while i < len(name):
+        phrase = _match_phrase(name, i)
+        if phrase:
+            parts.append(PHRASE_INITIALS_MAP[phrase])
+            i += len(phrase)
+            continue
+
+        ch = name[i]
         if _is_chinese(ch):
             p = _get_pinyin(ch)
             if p and p[0].isalpha():
@@ -1924,6 +1981,7 @@ def to_initials(name: str) -> str:
             # For non-Chinese, use the first letter if it's alphabetic
             if ch.isalpha():
                 parts.append(ch.lower())
+        i += 1
 
     return "".join(parts)
 
