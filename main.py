@@ -14,20 +14,30 @@ class PinyinExtension(Extension):
 
 class KeywordQueryEventListener(EventListener):
     def on_event(self, event, extension):
+        # Get the query argument (everything after the keyword and space)
+        argument = event.get_argument() or ""
+        if not argument:
+            return RenderResultListAction([])
+
+        # Search all indexed apps for matches
+        matches = search_apps(argument, all_apps)
+
+        # Convert to extension result items
         items = []
-        items.append(
-            ExtensionResultItem(
-                icon="images/icon.png",
-                name="Test Item",
-                description="Skeleton works",
-                on_enter=HideWindowAction(),
+        for app in matches[:8]:  # cap at 8 results for UX
+            items.append(
+                ExtensionResultItem(
+                    icon=app.icon if app.icon else "images/icon.png",
+                    name=app.name,
+                    description=app.exec_command,
+                    on_enter=HideWindowAction(),
+                )
             )
-        )
+
+        if not items:
+            return RenderResultListAction([])
+
         return RenderResultListAction(items)
-
-
-if __name__ == "__main__":
-    PinyinExtension().run()
 
 
 from dataclasses import dataclass
@@ -36,6 +46,15 @@ import configparser
 import os
 
 from pinyin_data import build_search_keys
+
+
+# Module-level app index — loaded once when extension starts
+all_apps = []
+
+
+def load_index():
+    global all_apps
+    all_apps = load_all_apps()
 
 
 DESKTOP_DIRS = [
@@ -174,3 +193,8 @@ def search_apps(query: str, apps: list[AppInfo]) -> list[AppInfo]:
     # Sort by rank, then by full_pinyin for ties
     scored.sort(key=lambda x: (x[0], x[1], x[2]))
     return [app for _, _, _, app in scored]
+
+
+if __name__ == "__main__":
+    load_index()
+    PinyinExtension().run()
