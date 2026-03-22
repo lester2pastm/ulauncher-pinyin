@@ -1,0 +1,19 @@
+{
+  "required_api_version": "2",
+  "name": "Ulauncher Pinyin",
+  "description": "Search Chinese desktop apps by pinyin",
+  "developer_name": "Your Name",
+  "icon": "images/icon.png",
+  "options": {
+    "query_debounce": 0.1
+  },
+  "preferences": [
+    {
+      "id": "pinyin_kw",
+      "type": "keyword",
+      "name": "Pinyin",
+      "description": "Search apps by pinyin",
+      "default_value": "py"
+    }
+  ]
+}
