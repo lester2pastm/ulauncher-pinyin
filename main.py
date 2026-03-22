@@ -1,15 +1,20 @@
 from ulauncher.api.client.Extension import Extension
 from ulauncher.api.client.EventListener import EventListener
-from ulauncher.api.shared.event import KeywordQueryEvent
+from ulauncher.api.shared.event import KeywordQueryEvent, ItemEnterEvent
 from ulauncher.api.shared.item.ExtensionResultItem import ExtensionResultItem
 from ulauncher.api.shared.action.RenderResultListAction import RenderResultListAction
 from ulauncher.api.shared.action.HideWindowAction import HideWindowAction
+from ulauncher.api.shared.action.ExtensionCustomAction import ExtensionCustomAction
+
+import subprocess
+import shlex
 
 
 class PinyinExtension(Extension):
     def __init__(self):
         super(PinyinExtension, self).__init__()
         self.subscribe(KeywordQueryEvent, KeywordQueryEventListener())
+        self.subscribe(ItemEnterEvent, ItemEnterEventListener())
 
 
 class KeywordQueryEventListener(EventListener):
@@ -30,7 +35,9 @@ class KeywordQueryEventListener(EventListener):
                     icon=app.icon if app.icon else "images/icon.png",
                     name=app.name,
                     description=app.exec_command,
-                    on_enter=HideWindowAction(),
+                    on_enter=ExtensionCustomAction(
+                        app_to_action_data(app), keep_app_open=False
+                    ),
                 )
             )
 
@@ -38,6 +45,16 @@ class KeywordQueryEventListener(EventListener):
             return RenderResultListAction([])
 
         return RenderResultListAction(items)
+
+
+class ItemEnterEventListener(EventListener):
+    def on_event(self, event, extension):
+        data = event.get_data()
+        exec_cmd = data.get("exec_command", "")
+        desktop_path = data.get("desktop_path", "")
+        if exec_cmd:
+            launch_app(exec_cmd, desktop_path)
+        return None
 
 
 from dataclasses import dataclass
@@ -74,6 +91,7 @@ class AppInfo:
     no_display: bool = False
     keywords: str = ""
     comment: str = ""
+    desktop_path: str = ""
 
     def to_search_record(self):
         return {
@@ -95,6 +113,29 @@ class AppInfo:
             "exec": self.exec_command,
             "icon": self.icon,
         }
+
+
+def launch_app(exec_command: str, desktop_path: str = ""):
+    """Launch an application by exec command."""
+    try:
+        args = shlex.split(exec_command)
+        subprocess.Popen(
+            args,
+            start_new_session=True,
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+        )
+    except Exception as e:
+        print(f"Failed to launch {exec_command}: {e}")
+
+
+def app_to_action_data(app: AppInfo) -> dict:
+    """Serialize app info for passing through ExtensionCustomAction."""
+    return {
+        "exec_command": app.exec_command,
+        "desktop_path": app.desktop_path,
+        "name": app.name,
+    }
 
 
 def load_apps_from_paths(paths):
@@ -126,6 +167,7 @@ def load_apps_from_paths(paths):
                 icon=sec.get("Icon", ""),
                 keywords=sec.get("Keywords", ""),
                 comment=sec.get("Comment", ""),
+                desktop_path=path_str,
             )
         )
     return apps
