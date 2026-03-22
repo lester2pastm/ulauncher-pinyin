@@ -120,3 +120,57 @@ def load_all_apps():
                 os.path.join(d, f) for f in os.listdir(d) if f.endswith(".desktop")
             )
     return load_apps_from_paths(all_paths)
+
+
+def search_apps(query: str, apps: list[AppInfo]) -> list[AppInfo]:
+    """
+    Search apps by query string, matching against original name, full pinyin,
+    and initials with deterministic ranking.
+
+    Returns apps sorted by rank (highest priority first).
+    Only apps with at least a substring match are returned.
+    """
+    if not query:
+        return []
+
+    query = query.lower()
+    scored = []
+
+    for app in apps:
+        keys = app.build_search_keys()
+        original = keys["original"]
+        full = keys["full_pinyin"].lower()
+        inits = keys["initials"].lower()
+
+        rank = None
+
+        # Rank 1: exact original
+        if original == query:
+            rank = 1
+        # Rank 2: prefix original
+        elif original.startswith(query):
+            rank = 2
+        # Rank 3: exact full pinyin
+        elif full == query:
+            rank = 3
+        # Rank 4: prefix full pinyin
+        elif full.startswith(query):
+            rank = 4
+        # Rank 5: exact initials
+        elif inits == query:
+            rank = 5
+        # Rank 6: prefix initials
+        elif inits.startswith(query):
+            rank = 6
+        # Rank 7: substring fallback
+        elif query in full or query in original:
+            rank = 7
+        else:
+            rank = None
+
+        if rank is not None:
+            scored.append((rank, full, inits, app))
+
+    # Sort by rank, then by full_pinyin for ties
+    scored.sort(key=lambda x: (x[0], x[1], x[2]))
+    return [app for _, _, _, app in scored]
