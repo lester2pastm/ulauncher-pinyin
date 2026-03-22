@@ -35,6 +35,8 @@ from pathlib import Path
 import configparser
 import os
 
+from pinyin_data import build_search_keys
+
 
 DESKTOP_DIRS = [
     "/usr/share/applications",
@@ -62,6 +64,17 @@ class AppInfo:
             "keywords": self.keywords,
             "comment": self.comment,
             "no_display": self.no_display,
+        }
+
+    def build_search_keys(self):
+        """Return a dict with searchable pinyin keys derived from the app name."""
+        keys = build_search_keys(self.name)
+        return {
+            "original": self.name,
+            "full_pinyin": keys["full_pinyin"],
+            "initials": keys["initials"],
+            "exec": self.exec_command,
+            "icon": self.icon,
         }
 
 
