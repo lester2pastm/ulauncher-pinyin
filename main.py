@@ -1,5 +1,4 @@
 from ulauncher.api.client.Extension import Extension
-from ulauncher.api.client.EventListener import EventListener
 from ulauncher.api.shared.event import KeywordQueryEvent, ItemEnterEvent
 from ulauncher.api.shared.item.ExtensionResultItem import ExtensionResultItem
 from ulauncher.api.shared.action.RenderResultListAction import RenderResultListAction
@@ -24,8 +23,8 @@ class PinyinExtension(Extension):
         load_index()
 
 
-class KeywordQueryEventListener(EventListener):
-    def on_event(self, event, extension):
+class KeywordQueryEventListener:
+    def on_event(self, event, extension) -> RenderResultListAction:
         # Get the query argument (everything after the keyword and space)
         argument = event.get_argument() or ""
         if not argument:
@@ -43,8 +42,8 @@ class KeywordQueryEventListener(EventListener):
         return RenderResultListAction(items)
 
 
-class ItemEnterEventListener(EventListener):
-    def on_event(self, event, extension):
+class ItemEnterEventListener:
+    def on_event(self, event, extension) -> None:
         data = event.get_data()
         exec_cmd = data.get("exec_command", "")
         desktop_path = data.get("desktop_path", "")
