@@ -8,6 +8,10 @@ For example:
 - `py xt` -> `系统`
 - `py lanxin` -> `蓝信`
 
+## Screenshot
+
+![Ulauncher Pinyin screenshot](images/screenshot.png)
+
 ## Features
 
 - Searches app names by original Chinese text, full pinyin, and initials
@@ -27,7 +31,7 @@ For example:
 In Ulauncher:
 
 1. Open `Preferences -> Extensions`
-2. Add this GitHub repository URL
+2. Add this GitHub repository URL: `https://github.com/lester2pastm/ulauncher-pinyin`
 3. Enable the extension
 
 For local development, symlink the project into:
